@@ -1,23 +1,25 @@
-import { handleUpload } from '@vercel/blob/client';
+import { put } from '@vercel/blob';
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const jsonResponse = await handleUpload({
-      request: req,
-      body: req.body,
-      onBeforeGenerateToken: async (pathname) => ({
-        allowedContentTypes: ['application/zip'],
-        addRandomSuffix: false,
-        tokenPayload: JSON.stringify({ pathname }),
-      }),
-      onUploadCompleted: async ({ blob }) => {
-        console.log('Upload complete:', blob.url);
-      },
+    // Generate a signed URL using put with a placeholder
+    const { url } = await put('app.zip', 'placeholder', {
+      access: 'public',
+      contentType: 'application/zip',
+      addRandomSuffix: false,
     });
 
-    return res.status(200).json(jsonResponse);
+    // Return the signed URL to the client
+    res.status(200).json({
+      success: true,
+      uploadUrl: url,
+    });
   } catch (error) {
-    console.error('Upload error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Signed URL error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 }
