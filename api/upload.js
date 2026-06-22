@@ -13,13 +13,10 @@ export default async function handler(req, res) {
       addRandomSuffix: false,
     });
 
-    // Return the signed URL to the client
-    res.status(200).json({
-      success: true,
-      uploadUrl: url,
-    });
+    // The client library expects a response with a "url" property
+    res.status(200).json({ url });
   } catch (error) {
     console.error('Signed URL error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ error: error.message });
   }
 }
