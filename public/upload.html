@@ -440,51 +440,72 @@
             }
         }
         
-        // --- Upload File (Using Vercel Blob Client) ---
-        async function uploadFile(file) {
-            hideMessage();
-            
-            // Show progress
-            progressContainer.classList.add('active');
-            updateProgress(0, file.size);
-            
-            // Disable UI
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
-            uploadArea.classList.add('uploading');
-            
-            try {
-// Use direct server upload (bypasses handleUpload)
-const response = await fetch('/api/upload-direct', {
-    method: 'POST',
-    body: file, // send file directly
-});
+async function uploadFile(file) {
+    hideMessage();
 
-if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Upload failed: ${response.status} ${errorText}`);
-}
+    // Show progress
+    progressContainer.classList.add('active');
+    updateProgress(0, file.size);
 
-const data = await response.json();
-if (data.success) {
-    showMessage('✅ File uploaded successfully!', 'success');
-    await getCurrentFile();
-}
-                
-            } catch (error) {
-                console.error('Upload error:', error);
-                showMessage('❌ Upload failed: ' + error.message, 'error');
-            } finally {
-                // Reset UI
-                progressContainer.classList.remove('active');
-                progressFill.style.width = '0%';
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = '⬆️ Upload File';
-                uploadArea.classList.remove('uploading');
-                selectedFile = null;
-                fileInput.value = '';
-            }
+    // Disable UI
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
+    uploadArea.classList.add('uploading');
+
+    try {
+        // Step 1: Get signed upload URL from server
+        const urlResponse = await fetch('/api/get-upload-url', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filename: 'app.zip' }),
+        });
+
+        if (!urlResponse.ok) {
+            const errorText = await urlResponse.text();
+            throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
         }
+
+        const urlData = await urlResponse.json();
+        if (!urlData.success) {
+            throw new Error(urlData.error || 'Failed to get upload URL');
+        }
+
+        const uploadUrl = urlData.uploadUrl;
+
+        // Step 2: Upload file directly to signed URL
+        const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/zip',
+            },
+            body: file,
+        });
+
+        if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
+        }
+
+        // Success!
+        showMessage('✅ File uploaded successfully! Users can now download it.', 'success');
+        await getCurrentFile();
+
+    } catch (error) {
+        console.error('Upload error:', error);
+        showMessage('❌ Upload failed: ' + error.message, 'error');
+    } finally {
+        // Reset UI
+        progressContainer.classList.remove('active');
+        progressFill.style.width = '0%';
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '⬆️ Upload File';
+        uploadArea.classList.remove('uploading');
+        selectedFile = null;
+        fileInput.value = '';
+    }
+}
         
         // --- Delete File ---
         async function deleteFile() {
