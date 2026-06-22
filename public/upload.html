@@ -558,13 +558,15 @@
                 }
                 
                 // Step 2: Upload directly to Vercel Blob
-// Alternative: Convert to Blob
+// Step 2: Upload directly to Vercel Blob using ArrayBuffer
+const fileBuffer = await file.arrayBuffer();
 const uploadResponse = await fetch(urlData.uploadUrl, {
     method: 'PUT',
     headers: {
         'Content-Type': 'application/zip',
+        'Content-Length': file.size,
     },
-    body: new Blob([file], { type: 'application/zip' }),
+    body: fileBuffer,  // <-- ArrayBuffer works as a buffer
 });
                 
                 if (!uploadResponse.ok) {
