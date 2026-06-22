@@ -7,35 +7,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get the file from the request (multipart form data)
-    const file = req.body.file;
-    const filename = 'app.zip';
-    
-    // Upload to Vercel Blob
-    const blob = await put(filename, file, {
+    const { filename, contentType } = req.body;
+
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
+    }
+
+    // Generate a signed URL for direct client upload
+    const blob = await put(filename, {
       access: 'public',
-      addRandomSuffix: false, // Keeps the filename as "app.zip"
+      contentType: contentType || 'application/zip',
+      addRandomSuffix: false,
     });
 
-    // Return the public URL
+    // Return the upload URL and the blob URL
     return res.status(200).json({
       success: true,
-      url: blob.url,
-      message: 'File uploaded successfully! Users can now download it.',
-      downloadUrl: blob.url
+      uploadUrl: blob.url,
+      blobUrl: blob.url, // For public blob, the URL is the same
+      message: 'Upload URL generated successfully'
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Upload URL generation error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Upload failed'
+      error: error.message || 'Failed to generate upload URL'
     });
   }
 }
-
-// Disable body parser for file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};

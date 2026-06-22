@@ -206,6 +206,11 @@
             background: rgba(0, 255, 136, 0.1);
         }
         
+        .upload-area.uploading {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
         .upload-icon {
             font-size: 48px;
             margin-bottom: 16px;
@@ -265,6 +270,39 @@
             margin-top: 16px;
         }
         
+        .progress-container {
+            margin-top: 16px;
+            display: none;
+        }
+        
+        .progress-container.active {
+            display: block;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #1a1d24;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #8b5cf6);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #8892a0;
+            margin-top: 8px;
+        }
+        
         .loading-spinner {
             display: inline-block;
             width: 20px;
@@ -291,16 +329,6 @@
             border-radius: 4px;
             color: #f0f4f8;
             font-size: 13px;
-        }
-        
-        .download-link {
-            color: #00ff88;
-            text-decoration: none;
-            word-break: break-all;
-        }
-        
-        .download-link:hover {
-            text-decoration: underline;
         }
         
         @media (max-width: 640px) {
@@ -367,6 +395,16 @@
             </div>
             <input type="file" id="fileInput" accept=".zip">
             
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text">
+                    <span id="progressPercent">0%</span>
+                    <span id="progressSize">0 MB / 0 MB</span>
+                </div>
+            </div>
+            
             <div class="message" id="message"></div>
             
             <div class="btn-container">
@@ -387,7 +425,7 @@
                 2. It will be stored in Vercel Blob storage<br>
                 3. Your main website will serve it for download<br>
                 <br>
-                <span style="color: #4a5568;">Download URL: <code id="downloadUrlDisplay">https://your-site.vercel.app/api/get-file</code></span>
+                <span style="color: #4a5568;">Files up to 50MB supported via direct upload</span>
             </div>
         </div>
     </div>
@@ -429,7 +467,10 @@
         const fileName = document.getElementById('fileName');
         const fileMeta = document.getElementById('fileMeta');
         const fileSize = document.getElementById('fileSize');
-        const downloadUrlDisplay = document.getElementById('downloadUrlDisplay');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressSize = document.getElementById('progressSize');
         
         let selectedFile = null;
         let currentFileUrl = null;
@@ -452,12 +493,11 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
-        function updateDownloadUrl(url) {
-            if (url) {
-                const displayUrl = url.replace(/\.zip$/, '');
-                downloadUrlDisplay.textContent = displayUrl;
-                downloadUrlDisplay.href = url;
-            }
+        function updateProgress(loaded, total) {
+            const percent = Math.round((loaded / total) * 100);
+            progressFill.style.width = percent + '%';
+            progressPercent.textContent = percent + '%';
+            progressSize.textContent = formatFileSize(loaded) + ' / ' + formatFileSize(total);
         }
         
         // --- Get Current File Status ---
@@ -472,7 +512,6 @@
                     fileMeta.textContent = `Uploaded: ${new Date(data.uploadedAt).toLocaleString()}`;
                     fileSize.textContent = formatFileSize(data.size);
                     deleteBtn.style.display = 'inline-flex';
-                    updateDownloadUrl(data.url);
                     return data.url;
                 } else {
                     fileName.textContent = 'No file uploaded';
@@ -480,7 +519,6 @@
                     fileSize.textContent = '';
                     deleteBtn.style.display = 'none';
                     currentFileUrl = null;
-                    updateDownloadUrl(null);
                     return null;
                 }
             } catch (error) {
@@ -491,34 +529,65 @@
             }
         }
         
-        // --- Upload File ---
+        // --- Upload File (Client-Side Direct Upload) ---
         async function uploadFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
             hideMessage();
             
+            // Show progress
+            progressContainer.classList.add('active');
+            updateProgress(0, file.size);
+            
+            // Disable UI
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
+            uploadArea.classList.add('uploading');
+            
             try {
-                const response = await fetch(`${API_BASE}/upload`, {
+                // Step 1: Get upload URL from API
+                const urlResponse = await fetch(`${API_BASE}/upload`, {
                     method: 'POST',
-                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filename: 'app.zip',
+                        contentType: 'application/zip'
+                    }),
                 });
                 
-                const data = await response.json();
+                const urlData = await urlResponse.json();
                 
-                if (data.success) {
-                    showMessage('✅ ' + data.message, 'success');
-                    await getCurrentFile();
-                } else {
-                    showMessage('❌ ' + data.error, 'error');
+                if (!urlData.success) {
+                    throw new Error(urlData.error || 'Failed to get upload URL');
                 }
+                
+                // Step 2: Upload directly to Vercel Blob
+                const uploadResponse = await fetch(urlData.uploadUrl, {
+                    method: 'PUT',
+                    body: file,
+                    headers: {
+                        'Content-Type': 'application/zip',
+                    },
+                });
+                
+                if (!uploadResponse.ok) {
+                    throw new Error('Upload failed: ' + uploadResponse.statusText);
+                }
+                
+                // Step 3: Success!
+                showMessage('✅ File uploaded successfully! Users can now download it.', 'success');
+                await getCurrentFile();
+                
             } catch (error) {
+                console.error('Upload error:', error);
                 showMessage('❌ Upload failed: ' + error.message, 'error');
             } finally {
+                // Reset UI
+                progressContainer.classList.remove('active');
+                progressFill.style.width = '0%';
                 uploadBtn.disabled = false;
                 uploadBtn.innerHTML = '⬆️ Upload File';
+                uploadArea.classList.remove('uploading');
                 selectedFile = null;
                 fileInput.value = '';
             }
@@ -644,6 +713,7 @@
         
         console.log('📦 NovaTrade AI File Manager loaded');
         console.log('💡 Upload a .zip file to make it available for download');
+        console.log('📤 Files up to 50MB supported via direct upload');
     </script>
 </body>
 </html>
