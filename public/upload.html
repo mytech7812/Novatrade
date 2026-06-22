@@ -558,14 +558,14 @@
                 }
                 
                 // Step 2: Upload directly to Vercel Blob
-                // Using file directly as body (works in modern browsers)
-                const uploadResponse = await fetch(urlData.uploadUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/zip',
-                    },
-                    body: file,
-                });
+// Step 2: Upload directly to Vercel Blob using stream
+const uploadResponse = await fetch(urlData.uploadUrl, {
+    method: 'PUT',
+    headers: {
+        'Content-Type': 'application/zip',
+    },
+    body: file.stream(),  // ← Changed to file.stream()
+});
                 
                 if (!uploadResponse.ok) {
                     const errorText = await uploadResponse.text();
