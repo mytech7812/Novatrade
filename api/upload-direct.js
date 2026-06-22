@@ -6,15 +6,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Read raw body
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
-
-    // Upload directly to Blob
-    const blob = await put('app.zip', buffer, {
+    // Stream the request body directly to Vercel Blob
+    const blob = await put('app.zip', req, {
       access: 'public',
       contentType: 'application/zip',
       addRandomSuffix: false,
@@ -29,6 +22,6 @@ export default async function handler(req, res) {
 
 export const config = {
   api: {
-    bodyParser: false, // required for raw binary
+    bodyParser: false, // Required to stream raw request
   },
 };
