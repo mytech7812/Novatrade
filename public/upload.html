@@ -454,15 +454,22 @@
             uploadArea.classList.add('uploading');
             
             try {
-                // Use the official Vercel Blob client
-                const blob = await upload(file.name, file, {
-                    access: 'public',
-                    handleUploadUrl: '/api/upload',
-                });
+// Use direct server upload (bypasses handleUpload)
+const response = await fetch('/api/upload-direct', {
+    method: 'POST',
+    body: file, // send file directly
+});
 
-                // Success!
-                showMessage('✅ File uploaded successfully! Users can now download it.', 'success');
-                await getCurrentFile();
+if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Upload failed: ${response.status} ${errorText}`);
+}
+
+const data = await response.json();
+if (data.success) {
+    showMessage('✅ File uploaded successfully!', 'success');
+    await getCurrentFile();
+}
                 
             } catch (error) {
                 console.error('Upload error:', error);
