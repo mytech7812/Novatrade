@@ -1,35 +1,25 @@
-import { handleUpload } from '@vercel/blob/client';
+import { put } from '@vercel/blob';
 
 export default async function handler(req, res) {
-  // 🔥 CRITICAL DEBUG: Check if token exists
-  console.log('🔍 BLOB_READ_WRITE_TOKEN exists?', !!process.env.BLOB_READ_WRITE_TOKEN);
-  console.log('🔍 Token prefix:', process.env.BLOB_READ_WRITE_TOKEN?.substring(0, 15));
-
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return res.status(500).json({ 
-      error: 'BLOB_READ_WRITE_TOKEN is missing. Please set it in Vercel environment variables.' 
-    });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const jsonResponse = await handleUpload({
-      request: req,
-      body: req.body,
-      onBeforeGenerateToken: async (pathname) => {
-        return {
-          allowedContentTypes: ['application/zip'],
-          addRandomSuffix: false,
-          tokenPayload: JSON.stringify({ pathname }),
-        };
-      },
-      onUploadCompleted: async ({ blob }) => {
-        console.log('Upload complete:', blob.url);
-      },
+    // Generate a signed upload URL using put with a placeholder
+    // This returns a URL the client can PUT to directly
+    const { url } = await put('app.zip', 'placeholder', {
+      access: 'public',
+      contentType: 'application/zip',
+      addRandomSuffix: false,
     });
 
-    return res.status(200).json(jsonResponse);
+    res.status(200).json({ 
+      success: true, 
+      uploadUrl: url 
+    });
   } catch (error) {
-    console.error('Upload error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Signed URL error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 }
