@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NovaTrade AI - File Manager</title>
 
+    <!-- ✅ ADDED: Import map to resolve @vercel/blob/client in the browser -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@vercel/blob": "https://esm.sh/@vercel/blob@2.4.1",
+            "@vercel/blob/client": "https://esm.sh/@vercel/blob@2.4.1/client"
+        }
+    }
+    </script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -339,6 +348,9 @@
         const API_BASE = '/api';
         const PASSWORD = 'admin123'; // CHANGE THIS!
 
+        // ✅ ADDED: Import the official Vercel Blob client
+        import { upload } from '@vercel/blob/client';
+
         // --- Password check ---
         (function checkPassword() {
             const sessionPassword = sessionStorage.getItem('uploadPassword');
@@ -431,7 +443,7 @@
             }
         }
 
-        // --- Upload File (Using Signed URL) ---
+        // --- Upload File (Using Official Vercel Blob Client) ---
         async function uploadFile(file) {
             hideMessage();
 
@@ -439,46 +451,15 @@
             updateProgress(0, file.size);
 
             uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Getting upload URL...';
+            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
             uploadArea.classList.add('uploading');
 
             try {
-                // Step 1: Get signed upload URL from server
-                const urlResponse = await fetch('/api/upload', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ filename: 'app.zip' }),
+                // ✅ Use the official client – handles CORS and streaming for large files
+                const blob = await upload(file.name, file, {
+                    access: 'public',
+                    handleUploadUrl: '/api/upload',
                 });
-
-                if (!urlResponse.ok) {
-                    const errorText = await urlResponse.text();
-                    throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
-                }
-
-                const urlData = await urlResponse.json();
-                if (!urlData.success) {
-                    throw new Error(urlData.error || 'Failed to get upload URL');
-                }
-
-                const uploadUrl = urlData.uploadUrl;
-
-                uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading file...';
-
-                // Step 2: Upload directly to signed URL
-                const uploadResponse = await fetch(uploadUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/zip',
-                    },
-                    body: file,
-                });
-
-                if (!uploadResponse.ok) {
-                    const errorText = await uploadResponse.text();
-                    throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
-                }
 
                 showMessage('✅ File uploaded successfully!', 'success');
                 await getCurrentFile();
