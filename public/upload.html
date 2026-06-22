@@ -340,286 +340,256 @@
         </div>
     </div>
     
-    <script type="module">
-        // --- Configuration ---
-        const API_BASE = '/api';
-        const PASSWORD = 'admin123'; // CHANGE THIS!
-        
+<script type="module">
+    // --- Configuration ---
+    const API_BASE = '/api';
+    const PASSWORD = 'admin123'; // CHANGE THIS!
 
-        
-        // --- Password check ---
-        (function checkPassword() {
-            const sessionPassword = sessionStorage.getItem('uploadPassword');
-            if (sessionPassword !== PASSWORD) {
-                const userPassword = prompt('🔒 Enter admin password:');
-                if (userPassword === PASSWORD) {
-                    sessionStorage.setItem('uploadPassword', userPassword);
-                } else {
-                    document.body.innerHTML = `
-                        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 16px; text-align: center;">
-                            <h2 style="color: #dc2626;">Access Denied</h2>
-                            <p style="color: #8892a0;">Incorrect password. Please try again.</p>
-                            <button onclick="location.reload()" style="padding: 10px 24px; background: #00ff88; border: none; border-radius: 8px; color: #0D0F12; font-weight: 600; cursor: pointer;">Try Again</button>
-                        </div>
-                    `;
-                    throw new Error('Access Denied');
-                }
+    // Import Vercel Blob client (CORRECT)
+    import { upload } from '@vercel/blob/client';
+
+    // --- Password check ---
+    (function checkPassword() {
+        const sessionPassword = sessionStorage.getItem('uploadPassword');
+        if (sessionPassword !== PASSWORD) {
+            const userPassword = prompt('🔒 Enter admin password:');
+            if (userPassword === PASSWORD) {
+                sessionStorage.setItem('uploadPassword', userPassword);
+            } else {
+                document.body.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 16px; text-align: center;">
+                        <h2 style="color: #dc2626;">Access Denied</h2>
+                        <p style="color: #8892a0;">Incorrect password. Please try again.</p>
+                        <button onclick="location.reload()" style="padding: 10px 24px; background: #00ff88; border: none; border-radius: 8px; color: #0D0F12; font-weight: 600; cursor: pointer;">Try Again</button>
+                    </div>
+                `;
+                throw new Error('Access Denied');
             }
-        })();
-        
-        // --- DOM Elements ---
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const deleteBtn = document.getElementById('deleteBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const message = document.getElementById('message');
-        const fileName = document.getElementById('fileName');
-        const fileMeta = document.getElementById('fileMeta');
-        const fileSize = document.getElementById('fileSize');
-        const progressContainer = document.getElementById('progressContainer');
-        const progressFill = document.getElementById('progressFill');
-        const progressPercent = document.getElementById('progressPercent');
-        const progressSize = document.getElementById('progressSize');
-        
-        let selectedFile = null;
-        let currentFileUrl = null;
-        
-        // --- Helper Functions ---
-        function showMessage(text, type) {
-            message.textContent = text;
-            message.className = `message ${type}`;
         }
-        
-        function hideMessage() {
-            message.className = 'message';
-        }
-        
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-        
-        function updateProgress(loaded, total) {
-            const percent = Math.round((loaded / total) * 100);
-            progressFill.style.width = percent + '%';
-            progressPercent.textContent = percent + '%';
-            progressSize.textContent = formatFileSize(loaded) + ' / ' + formatFileSize(total);
-        }
-        
-        // --- Get Current File Status ---
-        async function getCurrentFile() {
-            try {
-                const response = await fetch(`${API_BASE}/get-file`);
-                const data = await response.json();
-                
-                if (data.success && data.exists) {
-                    currentFileUrl = data.url;
-                    fileName.textContent = data.filename || 'app.zip';
-                    fileMeta.textContent = `Uploaded: ${new Date(data.uploadedAt).toLocaleString()}`;
-                    fileSize.textContent = formatFileSize(data.size);
-                    deleteBtn.style.display = 'inline-flex';
-                    return data.url;
-                } else {
-                    fileName.textContent = 'No file uploaded';
-                    fileMeta.textContent = 'Upload a new version below';
-                    fileSize.textContent = '';
-                    deleteBtn.style.display = 'none';
-                    currentFileUrl = null;
-                    return null;
-                }
-            } catch (error) {
-                console.error('Get file error:', error);
-                fileName.textContent = 'Error loading status';
-                fileMeta.textContent = 'Refresh to try again';
+    })();
+
+    // --- DOM Elements ---
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const message = document.getElementById('message');
+    const fileName = document.getElementById('fileName');
+    const fileMeta = document.getElementById('fileMeta');
+    const fileSize = document.getElementById('fileSize');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressSize = document.getElementById('progressSize');
+
+    let selectedFile = null;
+    let currentFileUrl = null;
+
+    // --- Helper Functions ---
+    function showMessage(text, type) {
+        message.textContent = text;
+        message.className = `message ${type}`;
+    }
+
+    function hideMessage() {
+        message.className = 'message';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function updateProgress(loaded, total) {
+        const percent = Math.round((loaded / total) * 100);
+        progressFill.style.width = percent + '%';
+        progressPercent.textContent = percent + '%';
+        progressSize.textContent = formatFileSize(loaded) + ' / ' + formatFileSize(total);
+    }
+
+    // --- Get Current File Status ---
+    async function getCurrentFile() {
+        try {
+            const response = await fetch(`${API_BASE}/get-file`);
+            const data = await response.json();
+
+            if (data.success && data.exists) {
+                currentFileUrl = data.url;
+                fileName.textContent = data.filename || 'app.zip';
+                fileMeta.textContent = `Uploaded: ${new Date(data.uploadedAt).toLocaleString()}`;
+                fileSize.textContent = formatFileSize(data.size);
+                deleteBtn.style.display = 'inline-flex';
+                return data.url;
+            } else {
+                fileName.textContent = 'No file uploaded';
+                fileMeta.textContent = 'Upload a new version below';
+                fileSize.textContent = '';
+                deleteBtn.style.display = 'none';
+                currentFileUrl = null;
                 return null;
             }
+        } catch (error) {
+            console.error('Get file error:', error);
+            fileName.textContent = 'Error loading status';
+            fileMeta.textContent = 'Refresh to try again';
+            return null;
         }
-        
-async function uploadFile(file) {
-    hideMessage();
-
-    // Show progress
-    progressContainer.classList.add('active');
-    updateProgress(0, file.size);
-
-    // Disable UI
-    uploadBtn.disabled = true;
-    uploadBtn.innerHTML = '<span class="loading-spinner"></span> Getting upload URL...';
-    uploadArea.classList.add('uploading');
-
-    try {
-        // Step 1: Get signed upload URL from server
-        const urlResponse = await fetch('/api/get-upload-url', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filename: 'app.zip' }),
-        });
-
-        if (!urlResponse.ok) {
-            const errorText = await urlResponse.text();
-            throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
-        }
-
-        const urlData = await urlResponse.json();
-        if (!urlData.success) {
-            throw new Error(urlData.error || 'Failed to get upload URL');
-        }
-
-        const uploadUrl = urlData.uploadUrl;
-
-        // Update progress text
-        uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading file...';
-
-        // Step 2: Upload file directly to signed URL (bypasses serverless limit)
-        const uploadResponse = await fetch(uploadUrl, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/zip',
-            },
-            body: file,
-        });
-
-        if (!uploadResponse.ok) {
-            const errorText = await uploadResponse.text();
-            throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
-        }
-
-        // Success!
-        showMessage('✅ File uploaded successfully! Users can now download it.', 'success');
-        await getCurrentFile();
-
-    } catch (error) {
-        console.error('Upload error:', error);
-        showMessage('❌ Upload failed: ' + error.message, 'error');
-    } finally {
-        // Reset UI
-        progressContainer.classList.remove('active');
-        progressFill.style.width = '0%';
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = '⬆️ Upload File';
-        uploadArea.classList.remove('uploading');
-        selectedFile = null;
-        fileInput.value = '';
     }
-}
-        
-        // --- Delete File ---
-        async function deleteFile() {
-            if (!currentFileUrl) {
-                showMessage('❌ No file to delete', 'error');
-                return;
-            }
-            
-            if (!confirm('⚠️ Are you sure you want to delete the current file?\n\nThis will break the download link on your main website until you upload a new file.')) {
-                return;
-            }
-            
-            hideMessage();
-            deleteBtn.disabled = true;
-            deleteBtn.innerHTML = '🗑️ Deleting...';
-            
-            try {
-                const response = await fetch(`${API_BASE}/delete`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ url: currentFileUrl }),
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage('✅ File deleted successfully', 'success');
-                    await getCurrentFile();
-                } else {
-                    showMessage('❌ ' + data.error, 'error');
-                }
-            } catch (error) {
-                showMessage('❌ Delete failed: ' + error.message, 'error');
-            } finally {
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = '🗑️ Delete File';
-            }
-        }
-        
-        // --- Refresh Status ---
-        async function refreshStatus() {
-            hideMessage();
+
+    // --- Upload File (Using Vercel Blob Client) ---
+    async function uploadFile(file) {
+        hideMessage();
+
+        // Show progress
+        progressContainer.classList.add('active');
+        updateProgress(0, file.size);
+
+        // Disable UI
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
+        uploadArea.classList.add('uploading');
+
+        try {
+            // Use the official Vercel Blob client
+            const blob = await upload(file.name, file, {
+                access: 'public',
+                handleUploadUrl: '/api/upload',
+            });
+
+            // Success!
+            showMessage('✅ File uploaded successfully! Users can now download it.', 'success');
             await getCurrentFile();
-            showMessage('✅ Status refreshed', 'info');
-            setTimeout(hideMessage, 2000);
+
+        } catch (error) {
+            console.error('Upload error:', error);
+            showMessage('❌ Upload failed: ' + error.message, 'error');
+        } finally {
+            // Reset UI
+            progressContainer.classList.remove('active');
+            progressFill.style.width = '0%';
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '⬆️ Upload File';
+            uploadArea.classList.remove('uploading');
+            selectedFile = null;
+            fileInput.value = '';
         }
-        
-        // --- Event Listeners ---
-        uploadArea.addEventListener('click', () => fileInput.click());
-        
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                if (!file.name.endsWith('.zip')) {
-                    showMessage('❌ Please select a .zip file', 'error');
-                    fileInput.value = '';
-                    return;
-                }
-                if (file.size > 50 * 1024 * 1024) {
-                    showMessage('❌ File too large! Maximum 50MB', 'error');
-                    fileInput.value = '';
-                    return;
-                }
-                selectedFile = file;
-                uploadBtn.disabled = false;
-                showMessage(`📦 Selected: ${file.name} (${formatFileSize(file.size)})`, 'info');
+    }
+
+    // --- Delete File ---
+    async function deleteFile() {
+        if (!currentFileUrl) {
+            showMessage('❌ No file to delete', 'error');
+            return;
+        }
+
+        if (!confirm('⚠️ Are you sure you want to delete the current file?\n\nThis will break the download link on your main website until you upload a new file.')) {
+            return;
+        }
+
+        hideMessage();
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '🗑️ Deleting...';
+
+        try {
+            const response = await fetch(`${API_BASE}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: currentFileUrl }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('✅ File deleted successfully', 'success');
+                await getCurrentFile();
+            } else {
+                showMessage('❌ ' + data.error, 'error');
             }
-        });
-        
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                if (!file.name.endsWith('.zip')) {
-                    showMessage('❌ Please drop a .zip file', 'error');
-                    return;
-                }
-                if (file.size > 50 * 1024 * 1024) {
-                    showMessage('❌ File too large! Maximum 50MB', 'error');
-                    return;
-                }
-                selectedFile = file;
-                uploadBtn.disabled = false;
-                showMessage(`📦 Selected: ${file.name} (${formatFileSize(file.size)})`, 'info');
+        } catch (error) {
+            showMessage('❌ Delete failed: ' + error.message, 'error');
+        } finally {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = '🗑️ Delete File';
+        }
+    }
+
+    // --- Refresh Status ---
+    async function refreshStatus() {
+        hideMessage();
+        await getCurrentFile();
+        showMessage('✅ Status refreshed', 'info');
+        setTimeout(hideMessage, 2000);
+    }
+
+    // --- Event Listeners ---
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.name.endsWith('.zip')) {
+                showMessage('❌ Please select a .zip file', 'error');
+                fileInput.value = '';
+                return;
             }
-        });
-        
-        uploadBtn.addEventListener('click', () => {
-            if (selectedFile) {
-                uploadFile(selectedFile);
+            if (file.size > 50 * 1024 * 1024) {
+                showMessage('❌ File too large! Maximum 50MB', 'error');
+                fileInput.value = '';
+                return;
             }
-        });
-        
-        deleteBtn.addEventListener('click', deleteFile);
-        refreshBtn.addEventListener('click', refreshStatus);
-        
-        // --- Initialize ---
-        getCurrentFile();
-        console.log('📦 NovaTrade AI File Manager loaded');
-    </script>
+            selectedFile = file;
+            uploadBtn.disabled = false;
+            showMessage(`📦 Selected: ${file.name} (${formatFileSize(file.size)})`, 'info');
+        }
+    });
+
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            if (!file.name.endsWith('.zip')) {
+                showMessage('❌ Please drop a .zip file', 'error');
+                return;
+            }
+            if (file.size > 50 * 1024 * 1024) {
+                showMessage('❌ File too large! Maximum 50MB', 'error');
+                return;
+            }
+            selectedFile = file;
+            uploadBtn.disabled = false;
+            showMessage(`📦 Selected: ${file.name} (${formatFileSize(file.size)})`, 'info');
+        }
+    });
+
+    uploadBtn.addEventListener('click', () => {
+        if (selectedFile) {
+            uploadFile(selectedFile);
+        }
+    });
+
+    deleteBtn.addEventListener('click', deleteFile);
+    refreshBtn.addEventListener('click', refreshStatus);
+
+    // --- Initialize ---
+    getCurrentFile();
+    console.log('📦 NovaTrade AI File Manager loaded');
+</script>
 </body>
 </html>

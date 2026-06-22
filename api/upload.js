@@ -1,20 +1,12 @@
 import { handleUpload } from '@vercel/blob/client';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // Add this debug check
-  console.log('BLOB_READ_WRITE_TOKEN exists?', !!process.env.BLOB_READ_WRITE_TOKEN);
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return res.status(500).json({ error: 'BLOB_READ_WRITE_TOKEN is missing' });
-  }
-
   try {
+    const body = req.body;
+
     const jsonResponse = await handleUpload({
-      body: req.body,
       request: req,
+      body,
       onBeforeGenerateToken: async (pathname) => {
         return {
           allowedContentTypes: ['application/zip'],
@@ -23,13 +15,12 @@ export default async function handler(req, res) {
         };
       },
       onUploadCompleted: async ({ blob }) => {
-        console.log('Upload completed:', blob.url);
+        console.log('Upload complete:', blob.url);
       },
     });
 
-    res.status(200).json(jsonResponse);
+    return res.status(200).json(jsonResponse);
   } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 }
