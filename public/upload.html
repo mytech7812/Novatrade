@@ -448,28 +448,51 @@ async function uploadFile(file) {
 
     // Disable UI
     uploadBtn.disabled = true;
-    uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
+    uploadBtn.innerHTML = '<span class="loading-spinner"></span> Getting upload URL...';
     uploadArea.classList.add('uploading');
 
     try {
-        // Direct server upload (streaming, bypasses size limit)
-        const response = await fetch('/api/upload-direct', {
+        // Step 1: Get signed upload URL from server
+        const urlResponse = await fetch('/api/get-upload-url', {
             method: 'POST',
-            body: file, // send file directly
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filename: 'app.zip' }),
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Upload failed: ${response.status} ${errorText}`);
+        if (!urlResponse.ok) {
+            const errorText = await urlResponse.text();
+            throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
         }
 
-        const data = await response.json();
-        if (data.success) {
-            showMessage('✅ File uploaded successfully! Users can now download it.', 'success');
-            await getCurrentFile();
-        } else {
-            throw new Error(data.error || 'Upload failed');
+        const urlData = await urlResponse.json();
+        if (!urlData.success) {
+            throw new Error(urlData.error || 'Failed to get upload URL');
         }
+
+        const uploadUrl = urlData.uploadUrl;
+
+        // Update progress text
+        uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading file...';
+
+        // Step 2: Upload file directly to signed URL (bypasses serverless limit)
+        const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/zip',
+            },
+            body: file,
+        });
+
+        if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
+        }
+
+        // Success!
+        showMessage('✅ File uploaded successfully! Users can now download it.', 'success');
+        await getCurrentFile();
 
     } catch (error) {
         console.error('Upload error:', error);

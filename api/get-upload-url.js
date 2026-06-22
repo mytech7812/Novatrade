@@ -1,4 +1,4 @@
-import { createSignedUrl } from '@vercel/blob/server';
+import { createSignedUrl } from '@vercel/blob';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,10 +12,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Filename is required' });
     }
 
-    // Generate a signed URL for client upload
     const signedUrl = await createSignedUrl(filename, {
       access: 'public',
       contentType: 'application/zip',
+      addRandomSuffix: false,
     });
 
     res.status(200).json({
@@ -24,6 +24,9 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Signed URL error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate upload URL',
+    });
   }
 }
