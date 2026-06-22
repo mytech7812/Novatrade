@@ -5,18 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NovaTrade AI - File Manager</title>
 
-    <!-- ✅ Import map for Vercel Blob client -->
-    <script type="importmap">
-    {
-        "imports": {
-            "@vercel/blob": "https://esm.sh/@vercel/blob@2.4.1",
-            "@vercel/blob/client": "https://esm.sh/@vercel/blob@2.4.1/client"
-        }
-    }
-    </script>
-
     <style>
-        /* YOUR EXISTING STYLES – keep everything else unchanged */
+        /* YOUR EXISTING STYLES – keep everything exactly as you had them */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -349,9 +339,6 @@
         const API_BASE = '/api';
         const PASSWORD = 'admin123'; // CHANGE THIS!
 
-        // ✅ Import the official Vercel Blob client
-        import { upload } from '@vercel/blob/client';
-
         // --- Password check ---
         (function checkPassword() {
             const sessionPassword = sessionStorage.getItem('uploadPassword');
@@ -444,7 +431,7 @@
             }
         }
 
-        // --- Upload File (Using Official Vercel Blob Client) ---
+        // --- Upload File (Manual PUT – works despite CORS warning) ---
         async function uploadFile(file) {
             hideMessage();
 
@@ -452,21 +439,54 @@
             updateProgress(0, file.size);
 
             uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
+            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Getting upload URL...';
             uploadArea.classList.add('uploading');
 
             try {
-                // ✅ The official client handles CORS and streaming
-                const blob = await upload(file.name, file, {
-                    access: 'public',
-                    handleUploadUrl: '/api/upload',
+                // Step 1: Get signed upload URL from server
+                const urlResponse = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ filename: 'app.zip' }),
                 });
 
+                if (!urlResponse.ok) {
+                    const errorText = await urlResponse.text();
+                    throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
+                }
+
+                const urlData = await urlResponse.json();
+                // The server returns { url: '...' }
+                const uploadUrl = urlData.url;
+
+                uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading file...';
+
+                // Step 2: Upload directly to signed URL
+                // Despite CORS warnings, this succeeds if the response is ok.
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/zip',
+                    },
+                    body: file,
+                });
+
+                // If the response is ok, the upload succeeded.
+                if (!uploadResponse.ok) {
+                    const errorText = await uploadResponse.text();
+                    throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
+                }
+
+                // Success!
                 showMessage('✅ File uploaded successfully!', 'success');
                 await getCurrentFile();
 
             } catch (error) {
                 console.error('Upload error:', error);
+                // If we get a CORS error but the file appears on refresh, we could consider it a success,
+                // but we'll just show the error as is.
                 showMessage('❌ Upload failed: ' + error.message, 'error');
             } finally {
                 progressContainer.classList.remove('active');
