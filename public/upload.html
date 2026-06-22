@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaTrade AI - File Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0D0F12;
+            color: #f0f4f8;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #1a1d24;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #00ff88, #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f0f4f8;
+        }
+        
+        .logo span {
+            color: #00ff88;
+        }
+        
+        .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #1a1d24;
+            color: #8892a0;
+        }
+        
+        .status-badge.online {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+        }
+        
+        .card {
+            background: #14171c;
+            border: 1px solid #1a1d24;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .current-file {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: #1a1d24;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .file-icon {
+            font-size: 28px;
+        }
+        
+        .file-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .file-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .file-meta {
+            font-size: 13px;
+            color: #8892a0;
+        }
+        
+        .file-size {
+            font-size: 14px;
+            color: #8892a0;
+        }
+        
+        .btn {
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #00ff88;
+            color: #0D0F12;
+        }
+        
+        .btn-primary:hover {
+            background: #00cc6e;
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+        
+        .btn-danger:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #1a1d24;
+            color: #f0f4f8;
+        }
+        
+        .btn-secondary:hover {
+            background: #2a2d34;
+        }
+        
+        .upload-area {
+            border: 2px dashed #1a1d24;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+        
+        .upload-area.dragover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .upload-text {
+            font-size: 16px;
+            color: #8892a0;
+        }
+        
+        .upload-text strong {
+            color: #f0f4f8;
+        }
+        
+        .upload-hint {
+            font-size: 13px;
+            color: #4a5568;
+            margin-top: 8px;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+        
+        .message.success {
+            display: block;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+        }
+        
+        .message.error {
+            display: block;
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid #dc2626;
+            color: #dc2626;
+        }
+        
+        .message.info {
+            display: block;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+        }
+        
+        .btn-container {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #1a1d24;
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .info-text {
+            color: #8892a0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .info-text code {
+            background: #1a1d24;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #f0f4f8;
+            font-size: 13px;
+        }
+        
+        .download-link {
+            color: #00ff88;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        
+        .download-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 640px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .current-file {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .upload-area {
+                padding: 40px 16px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <h1>Nova<span>Trade</span> AI</h1>
+            </div>
+            <span class="status-badge online">● Online</span>
+        </div>
+        
+        <!-- Current File Card -->
+        <div class="card">
+            <div class="card-title">📦 Current File</div>
+            <div id="currentFileContainer">
+                <div class="current-file">
+                    <div class="file-info">
+                        <span class="file-icon">📦</span>
+                        <div class="file-details">
+                            <span class="file-name" id="fileName">No file uploaded</span>
+                            <span class="file-meta" id="fileMeta">Upload a new version below</span>
+                        </div>
+                    </div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+                <button class="btn btn-danger" id="deleteBtn" style="display: none;">
+                    🗑️ Delete File
+                </button>
+            </div>
+        </div>
+        
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-title">📤 Upload New File</div>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">
+                    <strong>Click to browse</strong> or drag and drop
+                </div>
+                <div class="upload-hint">Only .zip files (Max 50MB)</div>
+            </div>
+            <input type="file" id="fileInput" accept=".zip">
+            
+            <div class="message" id="message"></div>
+            
+            <div class="btn-container">
+                <button class="btn btn-primary" id="uploadBtn" disabled>
+                    ⬆️ Upload File
+                </button>
+                <button class="btn btn-secondary" id="refreshBtn">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+        
+        <!-- Info Card -->
+        <div class="card" style="border-color: transparent;">
+            <div class="info-text">
+                <strong>💡 How it works:</strong><br>
+                1. Upload your <strong>app.zip</strong> file (25-30MB)<br>
+                2. It will be stored in Vercel Blob storage<br>
+                3. Your main website will serve it for download<br>
+                <br>
+                <span style="color: #4a5568;">Download URL: <code id="downloadUrlDisplay">https://your-site.vercel.app/api/get-file</code></span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // --- Configuration ---
+        const API_BASE = '/api';
+        
+        // --- Simple Password Protection ---
+        const PASSWORD = 'admin123'; // 🔒 CHANGE THIS TO YOUR OWN PASSWORD!
+        
+        // Check password on page load
+        (function checkPassword() {
+            const sessionPassword = sessionStorage.getItem('uploadPassword');
+            if (sessionPassword !== PASSWORD) {
+                const userPassword = prompt('🔒 Enter admin password:');
+                if (userPassword === PASSWORD) {
+                    sessionStorage.setItem('uploadPassword', userPassword);
+                } else {
+                    document.body.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 16px; text-align: center;">
+                            <h2 style="color: #dc2626;">Access Denied</h2>
+                            <p style="color: #8892a0;">Incorrect password. Please try again.</p>
+                            <button onclick="location.reload()" style="padding: 10px 24px; background: #00ff88; border: none; border-radius: 8px; color: #0D0F12; font-weight: 600; cursor: pointer;">Try Again</button>
+                        </div>
+                    `;
+                    throw new Error('Access Denied');
+                }
+            }
+        })();
+        
+        // --- DOM Elements ---
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const message = document.getElementById('message');
+        const fileName = document.getElementById('fileName');
+        const fileMeta = document.getElementById('fileMeta');
+        const fileSize = document.getElementById('fileSize');
+        const downloadUrlDisplay = document.getElementById('downloadUrlDisplay');
+        
+        let selectedFile = null;
+        let currentFileUrl = null;
+        
+        // --- Helper Functions ---
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = `message ${type}`;
+        }
+        
+        function hideMessage() {
+            message.className = 'message';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function updateDownloadUrl(url) {
+            if (url) {
+                const displayUrl = url.replace(/\.zip$/, '');
+                downloadUrlDisplay.textContent = displayUrl;
+                downloadUrlDisplay.href = url;
+            }
+        }
+        
+        // --- Get Current File Status ---
+        async function getCurrentFile() {
+            try {
+                const response = await fetch(`${API_BASE}/get-file`);
+                const data = await response.json();
+                
+                if (data.success && data.exists) {
+                    currentFileUrl = data.url;
+                    fileName.textContent = data.filename || 'app.zip';
+                    fileMeta.textContent = `Uploaded: ${new Date(data.uploadedAt).toLocaleString()}`;
+                    fileSize.textContent = formatFileSize(data.size);
+                    deleteBtn.style.display = 'inline-flex';
+                    updateDownloadUrl(data.url);
+                    return data.url;
+                } else {
+                    fileName.textContent = 'No file uploaded';
+                    fileMeta.textContent = 'Upload a new version below';
+                    fileSize.textContent = '';
+                    deleteBtn.style.display = 'none';
+                    currentFileUrl = null;
+                    updateDownloadUrl(null);
+                    return null;
+                }
+            } catch (error) {
+                console.error('Get file error:', error);
+                fileName.textContent = 'Error loading status';
+                fileMeta.textContent = 'Refresh to try again';
+                return null;
+            }
+        }
+        
+        // --- Upload File ---
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
+            hideMessage();
+            
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('✅ ' + data.message, 'success');
+                    await getCurrentFile();
+                } else {
+                    showMessage('❌ ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Upload failed: ' + error.message, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '⬆️ Upload File';
+                selectedFile = null;
+                fileInput.value = '';
+            }
+        }
+        
+        // --- Delete File ---
+        async function deleteFile() {
+            if (!currentFileUrl) {
+                showMessage('❌ No file to delete', 'error');
+                return;
+            }
+            
+            if (!confirm('⚠️ Are you sure you want to delete the current file?\n\nThis will break the download link on your main website until you upload a new file.')) {
+                return;
+            }
+            
+            hideMessage();
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '🗑️ Deleting...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: currentFileUrl }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('✅ File deleted successfully', 'success');
+                    await getCurrentFile();
+                } else {
+                    showMessage('❌ ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Delete failed: ' + error.message, 'error');
+            } finally {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = '🗑️ Delete File';
+            }
+        }
+        
+        // --- Refresh Status ---
+        async function refreshStatus() {
+            hideMessage();
+            await getCurrentFile();
+            showMessage('✅ Status refreshed', 'info');
+            setTimeout(hideMessage, 2000);
+        }
+        
+        // --- Event Listeners ---
+        
+        // File selection via click
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (!file.name.endsWith('.zip')) {
+                    showMessage('❌ Please select a .zip file', 'error');
+                    fileInput.value = '';
+                    return;
+                }
+                if (file.size > 50 * 1024 * 1024) {
+                    showMessage('❌ File too large! Maximum 50MB', 'error');
+                    fileInput.value = '';
+                    return;
+                }
+                selectedFile = file;
+                uploadBtn.disabled = false;
+                showMessage(`📦 Selected: ${file.name} (${formatFileSize(file.size)})`, 'info');
+            }
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                if (!file.name.endsWith('.zip')) {
+                    showMessage('❌ Please drop a .zip file', 'error');
+                    return;
+                }
+                if (file.size > 50 * 1024 * 1024) {
+                    showMessage('❌ File too large! Maximum 50MB', 'error');
+                    return;
+                }
+                selectedFile = file;
+                uploadBtn.disabled = false;
+                showMessage(`📦 Selected: ${file.name} (${formatFileSize(file.size)})`, 'info');
+            }
+        });
+        
+        // Upload button
+        uploadBtn.addEventListener('click', () => {
+            if (selectedFile) {
+                uploadFile(selectedFile);
+            }
+        });
+        
+        // Delete button
+        deleteBtn.addEventListener('click', deleteFile);
+        
+        // Refresh button
+        refreshBtn.addEventListener('click', refreshStatus);
+        
+        // --- Initialize ---
+        getCurrentFile();
+        
+        console.log('📦 NovaTrade AI File Manager loaded');
+        console.log('💡 Upload a .zip file to make it available for download');
+    </script>
+</body>
+</html>
