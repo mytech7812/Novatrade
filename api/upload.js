@@ -6,7 +6,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const jsonResponse = await handleUpload({
+    // Debug: Check if token exists (remove after debugging)
+    console.log('BLOB_READ_WRITE_TOKEN set?', !!process.env.BLOB_READ_WRITE_TOKEN);
+
+    const response = await handleUpload({
       body: req.body,
       request: req,
       onBeforeGenerateToken: async (pathname) => {
@@ -21,9 +24,12 @@ export default async function handler(req, res) {
       },
     });
 
-    res.status(200).json(jsonResponse);
+    res.status(200).json(response);
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(400).json({ error: error.message });
+    res.status(500).json({
+      error: error.message || 'Internal Server Error',
+      stack: error.stack,
+    });
   }
 }
