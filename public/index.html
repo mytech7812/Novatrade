@@ -603,6 +603,11 @@
       if (!desktopNav || !button || header.querySelector('[data-mobile-menu]')) return;
 
       button.classList.remove('sf-hidden');
+      button.style.display = '';
+      button.style.border = '1px solid hsl(var(--primary) / 0.45)';
+      button.style.background = 'hsl(var(--primary) / 0.12)';
+      button.style.borderRadius = '0.75rem';
+      button.style.boxShadow = '0 0 24px -10px hsl(var(--primary))';
       button.setAttribute('type', 'button');
       button.setAttribute('aria-expanded', 'false');
       button.setAttribute('aria-controls', 'mobile-menu-' + index);
@@ -610,11 +615,22 @@
       var menu = document.createElement('nav');
       menu.id = 'mobile-menu-' + index;
       menu.setAttribute('data-mobile-menu', '');
-      menu.className = 'md:hidden hidden border-t border-border/50 bg-background/95 backdrop-blur-xl px-4 py-3';
+      menu.className = 'md:hidden hidden';
+      menu.style.marginTop = '0.25rem';
+      menu.style.padding = '0.75rem';
+      menu.style.borderTop = '1px solid hsl(var(--primary) / 0.25)';
+      menu.style.borderRadius = '0 0 1rem 1rem';
+      menu.style.background = 'hsl(var(--background) / 0.98)';
+      menu.style.boxShadow = '0 24px 60px -28px hsl(var(--primary))';
+      menu.style.backdropFilter = 'blur(18px)';
 
       desktopNav.querySelectorAll('a').forEach(function (link) {
         var item = link.cloneNode(true);
-        item.className = 'block rounded-lg px-4 py-3 text-sm font-medium text-foreground/80 hover:bg-primary/10 hover:text-foreground transition-colors';
+        item.className = 'block rounded-lg px-4 py-3 text-sm font-semibold text-foreground hover:bg-primary/10 hover:text-foreground transition-colors';
+        item.style.display = 'block';
+        item.style.marginBottom = '0.5rem';
+        item.style.border = '1px solid hsl(var(--border) / 0.8)';
+        item.style.background = 'hsl(var(--card) / 0.72)';
         item.addEventListener('click', function () {
           menu.classList.add('hidden');
           button.setAttribute('aria-expanded', 'false');
