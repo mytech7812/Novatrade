@@ -16,7 +16,7 @@
     </script>
 
     <style>
-        /* YOUR EXISTING STYLES - KEEP EVERYTHING THE SAME */
+        /* YOUR EXISTING STYLES – keep everything else unchanged */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -456,7 +456,7 @@
             uploadArea.classList.add('uploading');
 
             try {
-                // ✅ Use the official client. It handles CORS and streaming.
+                // ✅ The official client handles CORS and streaming
                 const blob = await upload(file.name, file, {
                     access: 'public',
                     handleUploadUrl: '/api/upload',
