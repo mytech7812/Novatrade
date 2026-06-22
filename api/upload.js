@@ -5,11 +5,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    // Debug: Check if token exists (remove after debugging)
-    console.log('BLOB_READ_WRITE_TOKEN set?', !!process.env.BLOB_READ_WRITE_TOKEN);
+  // Add this debug check
+  console.log('BLOB_READ_WRITE_TOKEN exists?', !!process.env.BLOB_READ_WRITE_TOKEN);
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return res.status(500).json({ error: 'BLOB_READ_WRITE_TOKEN is missing' });
+  }
 
-    const response = await handleUpload({
+  try {
+    const jsonResponse = await handleUpload({
       body: req.body,
       request: req,
       onBeforeGenerateToken: async (pathname) => {
@@ -24,12 +27,9 @@ export default async function handler(req, res) {
       },
     });
 
-    res.status(200).json(response);
+    res.status(200).json(jsonResponse);
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({
-      error: error.message || 'Internal Server Error',
-      stack: error.stack,
-    });
+    res.status(500).json({ error: error.message });
   }
 }
