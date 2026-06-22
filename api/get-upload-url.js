@@ -1,4 +1,4 @@
-import { createSignedUrl } from '@vercel/blob';
+import { createSignedUrl } from '@vercel/blob/server';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
