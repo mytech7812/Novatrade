@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NovaTrade AI - File Manager</title>
+    <script type="importmap">
+{
+    "imports": {
+        "@vercel/blob": "https://esm.sh/@vercel/blob@2.4.1",
+        "@vercel/blob/client": "https://esm.sh/@vercel/blob@2.4.1/client"
+    }
+}
+</script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -433,53 +441,70 @@
         }
 
         // --- Upload File ---
-        async function uploadFile(file) {
-            hideMessage();
+async function uploadFile(file) {
+    hideMessage();
 
-            progressContainer.classList.add('active');
-            updateProgress(0, file.size);
+    progressContainer.classList.add('active');
+    updateProgress(0, file.size);
 
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
-            uploadArea.classList.add('uploading');
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<span class="loading-spinner"></span> Getting upload URL...';
+    uploadArea.classList.add('uploading');
 
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('filename', file.name);
+    try {
+        // Step 1: Get signed URL from server
+        const urlResponse = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filename: file.name }),
+        });
 
-                const response = await fetch(`${API_BASE}/upload?filename=${encodeURIComponent(file.name)}`, {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Upload failed: ${response.status} ${errorText}`);
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage(`✅ File "${file.name}" uploaded successfully!`, 'success');
-                    await getCurrentFile();
-                } else {
-                    throw new Error(data.error || 'Upload failed');
-                }
-
-            } catch (error) {
-                console.error('Upload error:', error);
-                showMessage('❌ Upload failed: ' + error.message, 'error');
-            } finally {
-                progressContainer.classList.remove('active');
-                progressFill.style.width = '0%';
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = '⬆️ Upload File';
-                uploadArea.classList.remove('uploading');
-                selectedFile = null;
-                fileInput.value = '';
-            }
+        if (!urlResponse.ok) {
+            const errorText = await urlResponse.text();
+            throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
         }
+
+        const urlData = await urlResponse.json();
+        if (!urlData.success) {
+            throw new Error(urlData.error || 'Failed to get upload URL');
+        }
+
+        const uploadUrl = urlData.uploadUrl;
+
+        uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading file...';
+
+        // Step 2: Upload directly to signed URL (bypasses serverless limit)
+        const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/zip',
+            },
+            body: file,
+        });
+
+        if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
+        }
+
+        showMessage(`✅ File "${file.name}" uploaded successfully!`, 'success');
+        await getCurrentFile();
+
+    } catch (error) {
+        console.error('Upload error:', error);
+        showMessage('❌ Upload failed: ' + error.message, 'error');
+    } finally {
+        progressContainer.classList.remove('active');
+        progressFill.style.width = '0%';
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '⬆️ Upload File';
+        uploadArea.classList.remove('uploading');
+        selectedFile = null;
+        fileInput.value = '';
+    }
+}
 
         // --- Delete File ---
         async function deleteFile() {
