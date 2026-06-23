@@ -2,33 +2,29 @@ import { list } from '@vercel/blob';
 
 export default async function handler(req, res) {
   try {
-    // List all files in the blob storage
     const { blobs } = await list();
     
-    // Find the app.zip file
-    const appFile = blobs.find(blob => blob.pathname === 'app.zip');
-    
-    if (appFile) {
-      return res.status(200).json({
-        success: true,
-        url: appFile.url,
-        exists: true,
-        size: appFile.size,
-        uploadedAt: appFile.uploadedAt,
-        filename: 'app.zip'
+    // Get the most recently uploaded file
+    const latestFile = blobs.sort((a, b) => 
+      new Date(b.uploadedAt) - new Date(a.uploadedAt)
+    )[0];
+
+    if (latestFile) {
+      res.status(200).json({ 
+        success: true, 
+        url: latestFile.url,
+        filename: latestFile.pathname,
+        size: latestFile.size,
+        uploadedAt: latestFile.uploadedAt
       });
     } else {
-      return res.status(200).json({
-        success: true,
-        exists: false,
-        message: 'No file uploaded yet'
+      res.status(200).json({ 
+        success: true, 
+        exists: false 
       });
     }
   } catch (error) {
     console.error('Get file error:', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to get file info'
-    });
+    res.status(500).json({ error: error.message });
   }
 }

@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NovaTrade AI - File Manager</title>
-
     <style>
-        /* YOUR EXISTING STYLES – keep everything exactly as you had them */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -295,7 +293,7 @@
                 <div class="upload-text">
                     <strong>Click to browse</strong> or drag and drop
                 </div>
-                <div class="upload-hint">Only .zip files (Max 50MB)</div>
+                <div class="upload-hint">Any .zip file (Max 50MB)</div>
             </div>
             <input type="file" id="fileInput" accept=".zip">
 
@@ -325,19 +323,19 @@
         <div class="card" style="border-color: transparent;">
             <div class="info-text">
                 <strong>💡 How it works:</strong><br>
-                1. Upload your <strong>app.zip</strong> file (25-30MB)<br>
+                1. Upload any <strong>.zip</strong> file (any name)<br>
                 2. It will be stored in Vercel Blob storage<br>
-                3. Your main website will serve it for download<br>
+                3. Users will download the latest uploaded file<br>
                 <br>
-                <span style="color: #4a5568;">Files up to 50MB supported via direct upload</span>
+                <span style="color: #4a5568;">Files up to 50MB supported</span>
             </div>
         </div>
     </div>
 
-    <script type="module">
+    <script>
         // --- Configuration ---
         const API_BASE = '/api';
-        const PASSWORD = 'admin123'; // CHANGE THIS!
+        const PASSWORD = 'admin123'; // 🔒 CHANGE THIS!
 
         // --- Password check ---
         (function checkPassword() {
@@ -376,6 +374,7 @@
 
         let selectedFile = null;
         let currentFileUrl = null;
+        let currentFilename = null;
 
         // --- Helper Functions ---
         function showMessage(text, type) {
@@ -408,9 +407,10 @@
                 const response = await fetch(`${API_BASE}/get-file`);
                 const data = await response.json();
 
-                if (data.success && data.exists) {
+                if (data.success && data.url) {
                     currentFileUrl = data.url;
-                    fileName.textContent = data.filename || 'app.zip';
+                    currentFilename = data.filename || 'Unknown';
+                    fileName.textContent = currentFilename;
                     fileMeta.textContent = `Uploaded: ${new Date(data.uploadedAt).toLocaleString()}`;
                     fileSize.textContent = formatFileSize(data.size);
                     deleteBtn.style.display = 'inline-flex';
@@ -421,6 +421,7 @@
                     fileSize.textContent = '';
                     deleteBtn.style.display = 'none';
                     currentFileUrl = null;
+                    currentFilename = null;
                     return null;
                 }
             } catch (error) {
@@ -431,7 +432,7 @@
             }
         }
 
-        // --- Upload File (Manual PUT – works despite CORS warning) ---
+        // --- Upload File ---
         async function uploadFile(file) {
             hideMessage();
 
@@ -439,54 +440,35 @@
             updateProgress(0, file.size);
 
             uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Getting upload URL...';
+            uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading...';
             uploadArea.classList.add('uploading');
 
             try {
-                // Step 1: Get signed upload URL from server
-                const urlResponse = await fetch('/api/upload', {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('filename', file.name);
+
+                const response = await fetch(`${API_BASE}/upload?filename=${encodeURIComponent(file.name)}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ filename: 'app.zip' }),
+                    body: formData,
                 });
 
-                if (!urlResponse.ok) {
-                    const errorText = await urlResponse.text();
-                    throw new Error(`Failed to get upload URL: ${urlResponse.status} ${errorText}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Upload failed: ${response.status} ${errorText}`);
                 }
 
-                const urlData = await urlResponse.json();
-                // The server returns { url: '...' }
-                const uploadUrl = urlData.url;
-
-                uploadBtn.innerHTML = '<span class="loading-spinner"></span> Uploading file...';
-
-                // Step 2: Upload directly to signed URL
-                // Despite CORS warnings, this succeeds if the response is ok.
-                const uploadResponse = await fetch(uploadUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/zip',
-                    },
-                    body: file,
-                });
-
-                // If the response is ok, the upload succeeded.
-                if (!uploadResponse.ok) {
-                    const errorText = await uploadResponse.text();
-                    throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`✅ File "${file.name}" uploaded successfully!`, 'success');
+                    await getCurrentFile();
+                } else {
+                    throw new Error(data.error || 'Upload failed');
                 }
-
-                // Success!
-                showMessage('✅ File uploaded successfully!', 'success');
-                await getCurrentFile();
 
             } catch (error) {
                 console.error('Upload error:', error);
-                // If we get a CORS error but the file appears on refresh, we could consider it a success,
-                // but we'll just show the error as is.
                 showMessage('❌ Upload failed: ' + error.message, 'error');
             } finally {
                 progressContainer.classList.remove('active');
@@ -506,7 +488,7 @@
                 return;
             }
 
-            if (!confirm('⚠️ Are you sure you want to delete the current file?\n\nThis will break the download link on your main website until you upload a new file.')) {
+            if (!confirm(`⚠️ Are you sure you want to delete "${currentFilename}"?`)) {
                 return;
             }
 
@@ -610,6 +592,7 @@
         // --- Initialize ---
         getCurrentFile();
         console.log('📦 NovaTrade AI File Manager loaded');
+        console.log('💡 Upload any .zip file - it will be available for download automatically');
     </script>
 </body>
 </html>
